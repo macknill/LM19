@@ -44,10 +44,10 @@ float GiveMeTemp(int number)
        return temp;
        break;
     case 18: 
-       vin = 5.0 * analogRead(number) / 1024.0;
+       vin = 5000.0 * analogRead(number) / 1024.0;
        
   Serial.println(vin);
-       temp =  (vin - 0.5) / 100 ;
+       temp =  (vin - 500) / 10 ;
        return temp;
        break;
     default:
@@ -66,5 +66,5 @@ void loop() {
   Serial.println(GiveMeTemp(Temperature1));
   Serial.println(GiveMeTemp(Temperature2));
   Serial.println("all");
-  delay(500);
+  delay(1000);
 }
