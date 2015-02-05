@@ -68,7 +68,7 @@ float GiveMeTemp(int number)
 
 
 //almost rms
-#define rms_deep 10
+#define rms_deep 100
 uint16_t rms_array[2][rms_deep];
 uint16_t rms[2] = {0,0};
 uint16_t rms_count = 0;
@@ -86,11 +86,11 @@ void loop() {
     uint32_t temp[2] = {0,0};
     for (uint16_t count = 0; count < rms_deep; count++)
     {
-      temp[0] += rms_array[0][count];
-      temp[1] += rms_array[1][count];
+      temp[0] += ((uint32_t)rms_array[0][count] * (uint32_t)rms_array[0][count]);
+      temp[1] += ((uint32_t)rms_array[1][count] * (uint32_t)rms_array[1][count]);
     }
-    rms[0] = (uint16_t)(temp[0]/rms_deep);
-    rms[1] = (uint16_t)(temp[1]/rms_deep);
+    rms[0] = (uint16_t)sqrt(temp[0]/rms_deep);
+    rms[1] = (uint16_t)sqrt(temp[1]/rms_deep);
     rms_count = 0;
   }
   slave.poll( au16data, 3 );
