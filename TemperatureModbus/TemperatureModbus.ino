@@ -15,8 +15,8 @@
  
  #include <ModbusRtu.h>
  
-uint16_t au16data[3] = {
-  3, 1415, 1};
+uint16_t au16data[5] = {
+  3, 1415, 1, 1, 1};
  Modbus slave(1,0,0); // this is slave @1 and RS-232 or USB-FTDI
  
 int VssLM19 = 14,  Temperature1 =  15, GndLM19 =  16, Temperature2 =  18;
@@ -53,7 +53,7 @@ float GiveMeTemp(int number)
        break;
     case 18: 
        vin = 5000.0 * analogRead(number) / 1024.0;
-       temp =  (vin - 500) / 10 ;
+       //temp =  (vin - 500) / 10 ;
        return temp;
        break;
     default:
@@ -69,12 +69,12 @@ float GiveMeTemp(int number)
 
 //almost rms
 #define rms_deep 100
-uint16_t rms_array[2][rms_deep];
+float rms_array[2][rms_deep];
 uint16_t rms[2] = {0,0};
 uint16_t rms_count = 0;
 
-// the loop function runs over and over again forever
-void loop() {
+void rms_calc(void)
+{
   if (rms_count < rms_deep)
   {
       rms_array[0][rms_count] = GiveMeTemp(Temperature1)*100;
@@ -83,20 +83,29 @@ void loop() {
   }
   else
   {
-    uint32_t temp[2] = {0,0};
+    float temp[2] = {0,0};
     for (uint16_t count = 0; count < rms_deep; count++)
     {
-      temp[0] += ((uint32_t)rms_array[0][count] * (uint32_t)rms_array[0][count]);
-      temp[1] += ((uint32_t)rms_array[1][count] * (uint32_t)rms_array[1][count]);
+      temp[0] += (rms_array[0][count] * rms_array[0][count]);
+      temp[1] += (rms_array[1][count] * rms_array[1][count]);
     }
     rms[0] = (uint16_t)sqrt(temp[0]/rms_deep);
     rms[1] = (uint16_t)sqrt(temp[1]/rms_deep);
     rms_count = 0;
   }
-  slave.poll( au16data, 3 );
+}
+// the loop function runs over and over again forever
+void loop() {
+  
+  slave.poll( au16data, 5);
   au16data[0] = rms[0];
-  au16data[1] = rms[1];
+  au16data[2] = rms[1];
+  if (rms[0] < 0) au16data[1] = 1;
+  else au16data[1] = 2;
+  if (rms[1] < 0) au16data[3] = 1;
+  else au16data[3] = 2;
   //au16data[2] = slave.getID();
-  slave.setID((uint8_t)au16data[2]);
+  slave.setID((uint8_t)au16data[4]);
+  rms_calc();
   //delay(1000);
 }
