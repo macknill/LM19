@@ -19,7 +19,7 @@ uint16_t au16data[5] = {
   3, 1415, 1, 1, 1};
  Modbus slave(1,0,0); // this is slave @1 and RS-232 or USB-FTDI
  
-int VssLM19 = 14,  Temperature1 =  15, GndLM19 =  16, Temperature2 =  18;
+int VssLM19 = 14,  Temperature1 =  15, GndLM19 =  16, Temperature2 =  18, VccADC = 18;
 
 
 // the setup function runs once when you press reset or power the board
@@ -40,15 +40,14 @@ void setup() {
 }
 
 float GiveMeTemp(int number)
-{
+{  
   float vin;
   float temp;
+  float PowerVoltage = (1024.0/(float)analogRead(VccADC)) * 1.8; //read avr power voltage, using external ref 1.8 volt
   switch(number){
     case 15: 
-       vin = 5 * analogRead(number) / 1024.0;
-       temp =  -1481.96 + sqrt(2.1962 + (1.8639 - vin) / 3.88) * 1000 + 0.5;
-       //temp=((-3.88*0.000001)*(temp*temp))+(-1.15*0.01*temp)+1.8639;       
-       //temp =  -1481.96 + sqrt(2.1962 + (1.8639 - vin) / 3.88) * 1000 + 0.5;
+       vin = PowerVoltage * (float)analogRead(number) / 1024.0;
+       temp =  -1481.96 + sqrt(2.1962 + (1.8639 - vin) / 3.88) * 1000.0 + 0.5;
        return temp;
        break;
     case 18: 
@@ -70,15 +69,15 @@ float GiveMeTemp(int number)
 //almost rms
 #define rms_deep 100
 float rms_array[2][rms_deep];
-uint16_t rms[2] = {0,0};
+float rms[2] = {0,0};
 uint16_t rms_count = 0;
 
 void rms_calc(void)
 {
   if (rms_count < rms_deep)
   {
-      rms_array[0][rms_count] = GiveMeTemp(Temperature1)*100;
-      rms_array[1][rms_count] = GiveMeTemp(Temperature2)*100;
+      rms_array[0][rms_count] = GiveMeTemp(Temperature1);
+      rms_array[1][rms_count] = GiveMeTemp(Temperature2);
       rms_count++;
   }
   else
@@ -86,11 +85,11 @@ void rms_calc(void)
     float temp[2] = {0,0};
     for (uint16_t count = 0; count < rms_deep; count++)
     {
-      temp[0] += (rms_array[0][count] * rms_array[0][count]);
-      temp[1] += (rms_array[1][count] * rms_array[1][count]);
+      temp[0] += rms_array[0][count];
+      temp[1] += rms_array[1][count];
     }
-    rms[0] = (uint16_t)sqrt(temp[0]/rms_deep);
-    rms[1] = (uint16_t)sqrt(temp[1]/rms_deep);
+    rms[0] = temp[0]/rms_deep;
+    rms[1] = temp[1]/rms_deep;
     rms_count = 0;
   }
 }
@@ -98,13 +97,8 @@ void rms_calc(void)
 void loop() {
   
   slave.poll( au16data, 5);
-  au16data[0] = rms[0];
-  au16data[2] = rms[1];
-  if (rms[0] < 0) au16data[1] = 1;
-  else au16data[1] = 2;
-  if (rms[1] < 0) au16data[3] = 1;
-  else au16data[3] = 2;
-  //au16data[2] = slave.getID();
+  au16data[0] = rms[0]*100;
+  au16data[1] = rms[1]*100;
   slave.setID((uint8_t)au16data[4]);
   rms_calc();
   //delay(1000);
