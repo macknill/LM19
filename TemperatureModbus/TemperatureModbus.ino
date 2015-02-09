@@ -15,27 +15,21 @@
  
  #include <ModbusRtu.h>
  
-uint16_t au16data[5] = {
-  3, 1415, 1, 1, 1};
+uint16_t au16data[15] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
  Modbus slave(1,0,0); // this is slave @1 and RS-232 or USB-FTDI
- 
-int VssLM19 = 14,  Temperature1 =  15, GndLM19 =  16, Temperature2 =  18, VccADC = 18;
+#define Temperature1 14
+#define Temperature2 15
+
+int VccADC = 16;
 
 
 // the setup function runs once when you press reset or power the board
 void setup() {
   // initialize digital pin 13 as an output.
   pinMode(13, OUTPUT);
-  pinMode(VssLM19, OUTPUT);  
-  digitalWrite(VssLM19, HIGH);
-  pinMode(17, OUTPUT);  
-  digitalWrite(17, HIGH);
   pinMode(Temperature1, INPUT);
   pinMode(Temperature2, INPUT);
-  pinMode(GndLM19, OUTPUT);
-  digitalWrite(GndLM19, LOW);
-  pinMode(19, OUTPUT);
-  digitalWrite(19, LOW);
+  pinMode(VccADC, INPUT);
   slave.begin(9600);
 }
 
@@ -44,15 +38,22 @@ float GiveMeTemp(int number)
   float vin;
   float temp;
   float PowerVoltage = (1024.0/(float)analogRead(VccADC)) * 1.8; //read avr power voltage, using external ref 1.8 volt
+       au16data[5] = analogRead(VccADC);
+       au16data[8] = PowerVoltage*100;
   switch(number){
-    case 15: 
+    case Temperature1: 
        vin = PowerVoltage * (float)analogRead(number) / 1024.0;
+       au16data[3] = vin*100;
+       
+       au16data[6] = analogRead(VccADC);
        temp =  -1481.96 + sqrt(2.1962 + (1.8639 - vin) / 3.88) * 1000.0 + 0.5;
        return temp;
        break;
-    case 18: 
-       vin = 5000.0 * analogRead(number) / 1024.0;
-       //temp =  (vin - 500) / 10 ;
+    case Temperature2:      
+       vin = (PowerVoltage*1000) * analogRead(number) / 1024.0;
+       au16data[4] = vin/10;       
+       au16data[7] = analogRead(VccADC);
+       temp =  (vin - 500) / 10 ;
        return temp;
        break;
     default:
@@ -67,7 +68,7 @@ float GiveMeTemp(int number)
 
 
 //almost rms
-#define rms_deep 100
+#define rms_deep 10
 float rms_array[2][rms_deep];
 float rms[2] = {0,0};
 uint16_t rms_count = 0;
@@ -96,10 +97,10 @@ void rms_calc(void)
 // the loop function runs over and over again forever
 void loop() {
   
-  slave.poll( au16data, 5);
+  slave.poll( au16data, 15);
   au16data[0] = rms[0]*100;
   au16data[1] = rms[1]*100;
-  slave.setID((uint8_t)au16data[4]);
+  slave.setID((uint8_t)au16data[2]);
   rms_calc();
   //delay(1000);
 }
